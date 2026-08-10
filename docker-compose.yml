@@ -15,7 +15,4 @@ services:
       BOOKDROP_AUDIOBOOKSHELF_API_TOKEN: ${BOOKDROP_AUDIOBOOKSHELF_API_TOKEN:-}
       BOOKDROP_GOOGLE_BOOKS_API_KEY: ${BOOKDROP_GOOGLE_BOOKS_API_KEY:-}
     volumes:
-      - bookdrop-data:/app/data
-
-volumes:
-  bookdrop-data:
+      - /srv/docker/data/bookdrop:/app/data
