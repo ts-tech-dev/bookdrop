@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # Scheduler
     release_check_interval_minutes: int = 60
+    daily_digest_hour_utc: int = 13
 
 
 @lru_cache

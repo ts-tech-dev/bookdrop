@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import User
 from app.models.enums import NotificationChannel
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.services.digest import send_digest_to_user
 from app.services.discord import DiscordNotifier
 from app.services.email import EmailNotifier
 from app.services.subscriptions import subscribe_user_to_all_authors
@@ -83,3 +84,19 @@ async def send_test_notification(user_id: int, db: Session = Depends(get_db)) ->
         raise HTTPException(status_code=502, detail=f"Failed to send test notification: {exc}") from exc
 
     return {"status": "sent", "channel": user.notification_channel.value}
+
+
+@router.post("/{user_id}/send-digest")
+async def send_digest(user_id: int, db: Session = Depends(get_db)) -> dict:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        book_count = await send_digest_to_user(db, user)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to send digest: {exc}") from exc
+
+    if book_count == 0:
+        return {"status": "skipped", "reason": "no upcoming books or no destination configured"}
+    return {"status": "sent", "book_count": book_count}

@@ -8,6 +8,8 @@ announce or release new books and audiobooks.
 - Manually add authors to follow, or import your author list from an
   [Audiobookshelf](https://www.audiobookshelf.org/) instance.
 - Looks up new and upcoming titles via the Audible catalog and the Google Books API.
+- Sends each user a daily digest of every upcoming book across their subscribed authors,
+  in addition to per-release notifications.
 - Per-user notification settings:
   - **Channel**: Discord webhook or email.
   - **Frequency**: immediate, daily digest, or weekly digest.
@@ -49,3 +51,4 @@ All configuration is via environment variables (see `.env.example`), prefixed wi
 | `BOOKDROP_GOOGLE_BOOKS_API_KEY` | Optional API key for higher Google Books rate limits. |
 | `BOOKDROP_AUDIBLE_MARKETPLACE` | Audible marketplace to query (`us`, `uk`, `de`, `fr`, `ca`, `au`). |
 | `BOOKDROP_RELEASE_CHECK_INTERVAL_MINUTES` | How often to poll Audible/Google Books for tracked authors. |
+| `BOOKDROP_DAILY_DIGEST_HOUR_UTC` | Hour of day (UTC, 0-23) each user gets a digest of all upcoming books for their subscribed authors. |
