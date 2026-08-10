@@ -2,7 +2,7 @@ services:
   bookdrop:
     build: .
     ports:
-      - "8000:8000"
+      - "8080:8000"
     environment:
       BOOKDROP_DATABASE_URL: sqlite:////app/data/bookdrop.db
       BOOKDROP_DISCORD_WEBHOOK_URL: ${BOOKDROP_DISCORD_WEBHOOK_URL:-}
