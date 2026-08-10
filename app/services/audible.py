@@ -28,7 +28,7 @@ class AudibleClient:
             "author": author_name,
             "num_results": 50,
             "products_sort_by": "ReleaseDate",
-            "response_groups": "product_desc,product_attrs,media",
+            "response_groups": "product_desc,product_attrs,media,series",
         }
 
         async with httpx.AsyncClient(timeout=15) as client:

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.services.subscriptions import subscribe_user_to_all_authors
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -19,6 +20,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+    subscribe_user_to_all_authors(db, user)
     return user
 
 

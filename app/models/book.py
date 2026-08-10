@@ -30,6 +30,9 @@ class Book(Base):
     external_id: Mapped[str | None] = mapped_column(String, nullable=True)
     cover_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    series: Mapped[str | None] = mapped_column(String, nullable=True)
+    series_sequence: Mapped[str | None] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     author: Mapped["Author"] = relationship(back_populates="books")

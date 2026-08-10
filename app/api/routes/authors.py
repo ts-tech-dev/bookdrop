@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models import Author, AuthorSubscription, User
 from app.models.enums import AuthorSource
 from app.schemas.author import AuthorCreate, AuthorRead
+from app.services.subscriptions import subscribe_all_users_to_author
 
 router = APIRouter(prefix="/authors", tags=["authors"])
 
@@ -20,6 +21,7 @@ def create_author(payload: AuthorCreate, db: Session = Depends(get_db)) -> Autho
     db.add(author)
     db.commit()
     db.refresh(author)
+    subscribe_all_users_to_author(db, author)
     return author
 
 
@@ -49,3 +51,17 @@ def subscribe(author_id: int, user_id: int, db: Session = Depends(get_db)) -> di
         db.commit()
 
     return {"status": "subscribed"}
+
+
+@router.delete("/{author_id}/subscribe/{user_id}", status_code=204)
+def unsubscribe(author_id: int, user_id: int, db: Session = Depends(get_db)) -> None:
+    subscription = (
+        db.query(AuthorSubscription)
+        .filter(AuthorSubscription.author_id == author_id, AuthorSubscription.user_id == user_id)
+        .first()
+    )
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    db.delete(subscription)
+    db.commit()

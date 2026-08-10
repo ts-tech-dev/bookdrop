@@ -1,18 +1,37 @@
-from datetime import timedelta
+import logging
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import AuthorSubscription, Book, NotificationLog, User
 from app.models.enums import NotificationChannel, NotificationFrequency, NotificationMode
 from app.services.discord import DiscordNotifier
 from app.services.email import EmailNotifier
 from app.utils.time import utcnow
 
+logger = logging.getLogger(__name__)
+
 _FREQUENCY_INTERVALS = {
     NotificationFrequency.IMMEDIATE: timedelta(0),
     NotificationFrequency.DAILY: timedelta(days=1),
     NotificationFrequency.WEEKLY: timedelta(days=7),
 }
+
+# How long after release a book still counts as a "new release" worth notifying about.
+_RECENTLY_RELEASED_WINDOW = timedelta(days=120)
+
+
+def _is_notification_worthy(book: Book) -> bool:
+    """True for books that are still upcoming/announced, or were released recently.
+
+    Excludes older backlog titles (e.g. an author's decades-old back catalog picked up
+    the first time we start tracking them), which aren't a "new release" a user asked
+    to hear about.
+    """
+    if book.release_date is None:
+        return True
+    return date.today() - book.release_date <= _RECENTLY_RELEASED_WINDOW
 
 
 class Notifier:
@@ -59,20 +78,44 @@ class Notifier:
         return due
 
     async def notify_for_book(self, book: Book) -> None:
+        if not _is_notification_worthy(book):
+            logger.info(
+                "Skipping notification for book %d (%r): release date %s is not recent",
+                book.id,
+                book.title,
+                book.release_date,
+            )
+            return
+
+        series_part = ""
+        if book.series:
+            series_part = f" [{book.series} #{book.series_sequence}]" if book.series_sequence else f" [{book.series}]"
+
         for user in self._due_users_for_book(book):
             message = (
-                f"{book.author.name} - {book.title} ({book.format.value}) "
+                f"{book.author.name} - {book.title}{series_part} ({book.format.value}) "
                 f"releases {book.release_date}"
             )
 
             wants_discord = user.notification_channel == NotificationChannel.DISCORD
-            if wants_discord and user.discord_webhook_url:
-                await self._discord.send(user.discord_webhook_url, message)
-            elif user.notification_channel == NotificationChannel.EMAIL and user.email:
-                self._email.send(user.email, f"New release: {book.title}", message)
-            else:
+            webhook_url = user.discord_webhook_url or get_settings().discord_webhook_url
+            try:
+                if wants_discord and webhook_url:
+                    await self._discord.send(webhook_url, message)
+                elif user.notification_channel == NotificationChannel.EMAIL and user.email:
+                    self._email.send(user.email, f"New release: {book.title}", message)
+                else:
+                    logger.warning(
+                        "Skipping notification for user %d: channel %s has no destination configured",
+                        user.id,
+                        user.notification_channel.value,
+                    )
+                    continue
+            except Exception:
+                logger.exception("Failed to send notification to user %d for book %d", user.id, book.id)
                 continue
 
+            logger.info("Notified user %d via %s for book %d", user.id, user.notification_channel.value, book.id)
             self._db.add(
                 NotificationLog(user_id=user.id, book_id=book.id, channel=user.notification_channel)
             )

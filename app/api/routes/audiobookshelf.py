@@ -6,6 +6,7 @@ from app.models import Author
 from app.models.enums import AuthorSource
 from app.schemas.author import AuthorRead
 from app.services.audiobookshelf import AudiobookshelfClient
+from app.services.subscriptions import subscribe_all_users_to_author
 
 router = APIRouter(prefix="/audiobookshelf", tags=["audiobookshelf"])
 
@@ -36,5 +37,6 @@ async def import_authors(db: Session = Depends(get_db)) -> list[Author]:
     db.commit()
     for author in imported:
         db.refresh(author)
+        subscribe_all_users_to_author(db, author)
 
     return imported

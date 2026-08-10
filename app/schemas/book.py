@@ -17,4 +17,6 @@ class BookRead(BaseModel):
     release_date: date | None
     source: str
     cover_url: str | None
+    series: str | None
+    series_sequence: str | None
     created_at: datetime

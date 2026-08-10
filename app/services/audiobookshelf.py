@@ -14,10 +14,21 @@ class AudiobookshelfClient:
             raise RuntimeError("Audiobookshelf is not configured")
 
         headers = {"Authorization": f"Bearer {self._settings.audiobookshelf_api_token}"}
-        url = f"{self._settings.audiobookshelf_url.rstrip('/')}/api/authors"
+        base_url = self._settings.audiobookshelf_url.rstrip("/")
 
         async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
+            libraries_response = await client.get(f"{base_url}/api/libraries", headers=headers)
+            libraries_response.raise_for_status()
+            library_ids = [
+                library["id"] for library in libraries_response.json().get("libraries", [])
+            ]
 
-        return response.json().get("authors", [])
+            authors: list[dict] = []
+            for library_id in library_ids:
+                response = await client.get(
+                    f"{base_url}/api/libraries/{library_id}/authors", headers=headers
+                )
+                response.raise_for_status()
+                authors.extend(response.json().get("authors", []))
+
+        return authors
