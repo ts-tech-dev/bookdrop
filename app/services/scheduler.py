@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import get_settings
@@ -7,6 +9,10 @@ from app.services.release_tracker import check_for_new_releases
 
 _scheduler = AsyncIOScheduler()
 
+# A fixed anchor (not "now") for the interval trigger, so the check grid stays aligned
+# across restarts instead of resetting to "interval minutes from whenever we last booted".
+_INTERVAL_ANCHOR = datetime(2000, 1, 1, tzinfo=UTC)
+
 
 def start_scheduler() -> None:
     settings = get_settings()
@@ -15,6 +21,7 @@ def start_scheduler() -> None:
         _run_release_check,
         "interval",
         minutes=settings.release_check_interval_minutes,
+        start_date=_INTERVAL_ANCHOR,
         id="release_check",
         replace_existing=True,
     )
