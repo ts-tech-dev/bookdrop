@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import AuthorSubscription, Book, NotificationLog, User
 from app.models.enums import NotificationChannel, NotificationFrequency, NotificationMode
-from app.services.discord import DiscordNotifier
+from app.services.discord import DiscordNotifier, book_embed
 from app.services.email import EmailNotifier
 from app.utils.time import utcnow
 
@@ -101,7 +101,7 @@ class Notifier:
             webhook_url = user.discord_webhook_url or get_settings().discord_webhook_url
             try:
                 if wants_discord and webhook_url:
-                    await self._discord.send(webhook_url, message)
+                    await self._discord.send(webhook_url, embeds=[book_embed(book)])
                 elif user.notification_channel == NotificationChannel.EMAIL and user.email:
                     self._email.send(user.email, f"New release: {book.title}", message)
                 else:

@@ -6,13 +6,22 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import AuthorSubscription, Book, User
 from app.models.enums import NotificationChannel
-from app.services.discord import DiscordNotifier
+from app.services.discord import DiscordNotifier, book_embed
 from app.services.email import EmailNotifier
 
 logger = logging.getLogger(__name__)
 
-# Discord webhook messages are capped at 2000 characters; leave headroom.
-_DISCORD_CHUNK_LIMIT = 1900
+# Discord caps a single message at 10 embeds and 6000 total embed characters;
+# leave headroom on the character budget.
+_DISCORD_EMBEDS_PER_MESSAGE = 10
+_DISCORD_EMBED_CHARS_LIMIT = 5500
+
+
+def _embed_length(embed: dict) -> int:
+    length = len(embed.get("title", "")) + len(embed.get("description", ""))
+    for field in embed.get("fields", []):
+        length += len(field.get("name", "")) + len(field.get("value", ""))
+    return length
 
 
 def upcoming_books_for_user(db: Session, user: User) -> list[Book]:
@@ -51,16 +60,31 @@ def _format_line(book: Book) -> str:
 
 async def _send_discord_digest(webhook_url: str, books: list[Book]) -> None:
     discord = DiscordNotifier()
-    chunk = "**Upcoming books**"
+    embeds: list[dict] = []
+    chars = 0
+    first_message = True
+
+    async def flush() -> None:
+        nonlocal embeds, chars, first_message
+        if not embeds:
+            return
+        content = "**Upcoming books**" if first_message else ""
+        await discord.send(webhook_url, content, embeds=embeds)
+        embeds = []
+        chars = 0
+        first_message = False
+
     for book in books:
-        line = _format_line(book)
-        if len(chunk) + 1 + len(line) > _DISCORD_CHUNK_LIMIT:
-            await discord.send(webhook_url, chunk)
-            chunk = line
-        else:
-            chunk = f"{chunk}\n{line}"
-    if chunk:
-        await discord.send(webhook_url, chunk)
+        embed = book_embed(book)
+        length = _embed_length(embed)
+        over_count = len(embeds) >= _DISCORD_EMBEDS_PER_MESSAGE
+        over_chars = chars + length > _DISCORD_EMBED_CHARS_LIMIT
+        if embeds and (over_count or over_chars):
+            await flush()
+        embeds.append(embed)
+        chars += length
+
+    await flush()
 
 
 def _send_email_digest(to_address: str, books: list[Book]) -> None:
