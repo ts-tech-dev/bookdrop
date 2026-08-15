@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import AuthorSubscription, Book, User
 from app.models.enums import NotificationChannel
-from app.services.discord import DiscordNotifier, bucket_embeds
+from app.services.discord import DiscordNotifier, book_embed, bucket_embeds, section_header_embed
 from app.services.email import EmailNotifier
 
 logger = logging.getLogger(__name__)
@@ -62,9 +62,13 @@ def _quarter_label(d: date) -> str:
     return f"Q{quarter} {d.year}"
 
 
-def _bucket_label(release_date: date | None, today: date) -> str:
+def _bucket_info(release_date: date | None, today: date) -> tuple[str, bool]:
+    """Returns (label, full_detail) - full_detail marks the near-term buckets that are worth
+
+    showing with cover art and per-book detail rather than a compact grouped list.
+    """
     if release_date is None:
-        return "Date TBA"
+        return "Date TBA", False
 
     this_month_start = date(today.year, today.month, 1)
     next_month_start = _add_months(this_month_start, 1)
@@ -72,36 +76,43 @@ def _bucket_label(release_date: date | None, today: date) -> str:
     beyond_start = _add_months(this_month_start, 3)
 
     if release_date < next_month_start:
-        return "This month"
+        return "This month", True
     if release_date < month3_start:
-        return next_month_start.strftime("%B %Y")
+        return next_month_start.strftime("%B %Y"), True
     if release_date < beyond_start:
-        return month3_start.strftime("%B %Y")
-    return _quarter_label(release_date)
+        return month3_start.strftime("%B %Y"), False
+    return _quarter_label(release_date), False
 
 
-def bucket_books(books: list[Book], today: date | None = None) -> dict[str, list[Book]]:
+def bucket_books(
+    books: list[Book], today: date | None = None
+) -> tuple[dict[str, list[Book]], set[str]]:
     """Groups books into This month / the next two individual months / quarters beyond that.
 
     Buckets are chronological and non-overlapping, so a book lands in exactly one of them.
     "Date TBA" (announced, no release date yet) is always last, regardless of where such a
-    book happened to sort in `books`.
+    book happened to sort in `books`. Also returns the set of "full detail" bucket labels
+    (This month and next month) - the near-term buckets worth rendering with full per-book
+    detail (e.g. cover art) rather than a compact grouped list.
     """
     today = today or date.today()
     buckets: dict[str, list[Book]] = {}
+    full_detail_labels: set[str] = set()
     tba: list[Book] = []
 
     for book in books:
-        label = _bucket_label(book.release_date, today)
+        label, full_detail = _bucket_info(book.release_date, today)
         if label == "Date TBA":
             tba.append(book)
-        else:
-            buckets.setdefault(label, []).append(book)
+            continue
+        buckets.setdefault(label, []).append(book)
+        if full_detail:
+            full_detail_labels.add(label)
 
     if tba:
         buckets["Date TBA"] = tba
 
-    return buckets
+    return buckets, full_detail_labels
 
 
 def _format_line(book: Book) -> str:
@@ -112,11 +123,17 @@ def _format_line(book: Book) -> str:
     return f"- {book.author.name} - {book.title}{series} - {release}"
 
 
-async def _send_discord_digest(webhook_url: str, buckets: dict[str, list[Book]]) -> None:
+async def _send_discord_digest(
+    webhook_url: str, buckets: dict[str, list[Book]], full_detail_labels: set[str]
+) -> None:
     discord = DiscordNotifier()
     all_embeds: list[dict] = []
     for label, books in buckets.items():
-        all_embeds.extend(bucket_embeds(label, books))
+        if label in full_detail_labels:
+            all_embeds.append(section_header_embed(label))
+            all_embeds.extend(book_embed(book) for book in books)
+        else:
+            all_embeds.extend(bucket_embeds(label, books))
 
     embeds: list[dict] = []
     chars = 0
@@ -158,14 +175,14 @@ async def send_digest_to_user(db: Session, user: User) -> int:
     books = upcoming_books_for_user(db, user)
     if not books:
         return 0
-    buckets = bucket_books(books)
+    buckets, full_detail_labels = bucket_books(books)
 
     if user.notification_channel == NotificationChannel.DISCORD:
         webhook_url = user.discord_webhook_url or get_settings().discord_webhook_url
         if not webhook_url:
             logger.warning("Skipping digest for user %d: no Discord webhook configured", user.id)
             return 0
-        await _send_discord_digest(webhook_url, buckets)
+        await _send_discord_digest(webhook_url, buckets, full_detail_labels)
     elif user.notification_channel == NotificationChannel.EMAIL:
         if not user.email:
             logger.warning("Skipping digest for user %d: no email address", user.id)

@@ -22,7 +22,7 @@ def test_bucket_books_groups_by_month_then_quarter_then_tba():
         _book("no date", None),
     ]
 
-    buckets = bucket_books(books, today=today)
+    buckets, full_detail_labels = bucket_books(books, today=today)
 
     assert list(buckets.keys()) == [
         "This month",
@@ -39,6 +39,10 @@ def test_bucket_books_groups_by_month_then_quarter_then_tba():
     assert [b.title for b in buckets["Q1 2027"]] == ["far quarter"]
     assert [b.title for b in buckets["Date TBA"]] == ["no date"]
 
+    # Only this month and next month get full per-book detail (e.g. cover art);
+    # everything further out is a compact grouped list.
+    assert full_detail_labels == {"This month", "September 2026"}
+
 
 def test_bucket_books_tba_is_always_last_regardless_of_input_order():
     today = date(2026, 8, 15)
@@ -47,7 +51,7 @@ def test_bucket_books_tba_is_always_last_regardless_of_input_order():
         _book("this month", date(2026, 8, 20)),
     ]
 
-    buckets = bucket_books(books, today=today)
+    buckets, _ = bucket_books(books, today=today)
 
     assert list(buckets.keys()) == ["This month", "Date TBA"]
 
@@ -56,7 +60,7 @@ def test_bucket_books_no_book_appears_in_more_than_one_bucket():
     today = date(2026, 8, 15)
     books = [_book(f"book {i}", date(2026, 9, 1)) for i in range(3)]
 
-    buckets = bucket_books(books, today=today)
+    buckets, _ = bucket_books(books, today=today)
 
     total = sum(len(group) for group in buckets.values())
     assert total == len(books)

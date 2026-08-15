@@ -36,6 +36,11 @@ def book_embed(book: Book) -> dict[str, Any]:
     return embed
 
 
+def section_header_embed(label: str) -> dict[str, Any]:
+    """A title-only embed used to label a run of full-detail book embeds in the digest."""
+    return {"title": label, "color": _EMBED_COLOR}
+
+
 def book_field(book: Book) -> dict[str, Any]:
     """Compact one-book field for grouping several books under a single digest embed."""
     name = book.title
