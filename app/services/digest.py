@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import AuthorSubscription, Book, User
 from app.models.enums import NotificationChannel
-from app.services.discord import DiscordNotifier, book_embed
+from app.services.discord import DiscordNotifier, bucket_embeds
 from app.services.email import EmailNotifier
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,60 @@ def upcoming_books_for_user(db: Session, user: User) -> list[Book]:
     return list(deduped.values())
 
 
+def _add_months(d: date, months: int) -> date:
+    month_index = d.month - 1 + months
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
+
+
+def _quarter_label(d: date) -> str:
+    quarter = (d.month - 1) // 3 + 1
+    return f"Q{quarter} {d.year}"
+
+
+def _bucket_label(release_date: date | None, today: date) -> str:
+    if release_date is None:
+        return "Date TBA"
+
+    this_month_start = date(today.year, today.month, 1)
+    next_month_start = _add_months(this_month_start, 1)
+    month3_start = _add_months(this_month_start, 2)
+    beyond_start = _add_months(this_month_start, 3)
+
+    if release_date < next_month_start:
+        return "This month"
+    if release_date < month3_start:
+        return next_month_start.strftime("%B %Y")
+    if release_date < beyond_start:
+        return month3_start.strftime("%B %Y")
+    return _quarter_label(release_date)
+
+
+def bucket_books(books: list[Book], today: date | None = None) -> dict[str, list[Book]]:
+    """Groups books into This month / the next two individual months / quarters beyond that.
+
+    Buckets are chronological and non-overlapping, so a book lands in exactly one of them.
+    "Date TBA" (announced, no release date yet) is always last, regardless of where such a
+    book happened to sort in `books`.
+    """
+    today = today or date.today()
+    buckets: dict[str, list[Book]] = {}
+    tba: list[Book] = []
+
+    for book in books:
+        label = _bucket_label(book.release_date, today)
+        if label == "Date TBA":
+            tba.append(book)
+        else:
+            buckets.setdefault(label, []).append(book)
+
+    if tba:
+        buckets["Date TBA"] = tba
+
+    return buckets
+
+
 def _format_line(book: Book) -> str:
     series = ""
     if book.series:
@@ -58,8 +112,12 @@ def _format_line(book: Book) -> str:
     return f"- {book.author.name} - {book.title}{series} - {release}"
 
 
-async def _send_discord_digest(webhook_url: str, books: list[Book]) -> None:
+async def _send_discord_digest(webhook_url: str, buckets: dict[str, list[Book]]) -> None:
     discord = DiscordNotifier()
+    all_embeds: list[dict] = []
+    for label, books in buckets.items():
+        all_embeds.extend(bucket_embeds(label, books))
+
     embeds: list[dict] = []
     chars = 0
     first_message = True
@@ -74,8 +132,7 @@ async def _send_discord_digest(webhook_url: str, books: list[Book]) -> None:
         chars = 0
         first_message = False
 
-    for book in books:
-        embed = book_embed(book)
+    for embed in all_embeds:
         length = _embed_length(embed)
         over_count = len(embeds) >= _DISCORD_EMBEDS_PER_MESSAGE
         over_chars = chars + length > _DISCORD_EMBED_CHARS_LIMIT
@@ -87,8 +144,12 @@ async def _send_discord_digest(webhook_url: str, books: list[Book]) -> None:
     await flush()
 
 
-def _send_email_digest(to_address: str, books: list[Book]) -> None:
-    body = "Upcoming books\n\n" + "\n".join(_format_line(book) for book in books)
+def _send_email_digest(to_address: str, buckets: dict[str, list[Book]]) -> None:
+    sections = []
+    for label, books in buckets.items():
+        lines = "\n".join(_format_line(book) for book in books)
+        sections.append(f"{label}\n{'-' * len(label)}\n{lines}")
+    body = "Upcoming books\n\n" + "\n\n".join(sections)
     EmailNotifier().send(to_address, "Bookdrop: upcoming books", body)
 
 
@@ -97,18 +158,19 @@ async def send_digest_to_user(db: Session, user: User) -> int:
     books = upcoming_books_for_user(db, user)
     if not books:
         return 0
+    buckets = bucket_books(books)
 
     if user.notification_channel == NotificationChannel.DISCORD:
         webhook_url = user.discord_webhook_url or get_settings().discord_webhook_url
         if not webhook_url:
             logger.warning("Skipping digest for user %d: no Discord webhook configured", user.id)
             return 0
-        await _send_discord_digest(webhook_url, books)
+        await _send_discord_digest(webhook_url, buckets)
     elif user.notification_channel == NotificationChannel.EMAIL:
         if not user.email:
             logger.warning("Skipping digest for user %d: no email address", user.id)
             return 0
-        _send_email_digest(user.email, books)
+        _send_email_digest(user.email, buckets)
 
     return len(books)
 

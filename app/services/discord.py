@@ -7,6 +7,10 @@ from app.models import Book
 # Discord's "blurple".
 _EMBED_COLOR = 0x5865F2
 
+# Discord's hard per-embed limits.
+_MAX_FIELDS_PER_EMBED = 25
+_MAX_EMBED_CHARS = 5500
+
 
 def book_embed(book: Book) -> dict[str, Any]:
     fields = [
@@ -30,6 +34,44 @@ def book_embed(book: Book) -> dict[str, Any]:
     if book.cover_url:
         embed["thumbnail"] = {"url": book.cover_url}
     return embed
+
+
+def book_field(book: Book) -> dict[str, Any]:
+    """Compact one-book field for grouping several books under a single digest embed."""
+    name = book.title
+    if book.series:
+        if book.series_sequence:
+            name += f" ({book.series} #{book.series_sequence})"
+        else:
+            name += f" ({book.series})"
+    release = book.release_date.isoformat() if book.release_date else "TBA"
+    return {
+        "name": name[:256],
+        "value": f"{book.author.name} · {release}"[:1024],
+        "inline": False,
+    }
+
+
+def bucket_embeds(label: str, books: list[Book]) -> list[dict[str, Any]]:
+    """One embed titled `label` per group of books, chunked to Discord's field/char limits."""
+    embeds: list[dict[str, Any]] = []
+    fields: list[dict[str, Any]] = []
+    chars = len(label)
+
+    for book in books:
+        field = book_field(book)
+        length = len(field["name"]) + len(field["value"])
+        if fields and (len(fields) >= _MAX_FIELDS_PER_EMBED or chars + length > _MAX_EMBED_CHARS):
+            embeds.append({"title": label, "color": _EMBED_COLOR, "fields": fields})
+            fields = []
+            chars = len(label)
+        fields.append(field)
+        chars += length
+
+    if fields:
+        embeds.append({"title": label, "color": _EMBED_COLOR, "fields": fields})
+
+    return embeds
 
 
 class DiscordNotifier:
