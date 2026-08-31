@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.config import get_settings
@@ -21,6 +22,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Bookdrop", lifespan=lifespan)
+
+# Lets a browser-based consumer (e.g. a homepage dashboard on another origin) call /api/v1.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_allow_origins_list,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
 app.include_router(api_router)
 
 

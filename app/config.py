@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     release_check_interval_minutes: int = 60
     daily_digest_hour_utc: int = 13
 
+    # Integration API (/api/v1), consumed by other services (e.g. a homepage dashboard)
+    integration_api_token: str | None = None
+    cors_allow_origins: str = "*"
+
+    @property
+    def cors_allow_origins_list(self) -> list[str]:
+        raw = self.cors_allow_origins.strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:

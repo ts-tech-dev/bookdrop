@@ -9,7 +9,7 @@ from app.main import app
 
 
 @pytest.fixture()
-def client():
+def _engine():
     # StaticPool keeps every connection on the same in-memory database; without it each
     # new connection (TestClient runs requests in a worker thread) would see an empty one.
     engine = create_engine(
@@ -17,8 +17,28 @@ def client():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture()
+def db_session(_engine):
+    """Direct session on the same in-memory DB the `client` fixture serves requests from,
+    for tests that need to seed rows there is no create endpoint for (e.g. books)."""
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    session = testing_session_local()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture()
+def client(_engine):
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
     def override_get_db():
         db = testing_session_local()
