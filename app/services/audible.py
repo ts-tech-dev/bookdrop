@@ -27,7 +27,11 @@ class AudibleClient:
         params: dict[str, str | int] = {
             "author": author_name,
             "num_results": 50,
-            "products_sort_by": "ReleaseDate",
+            # Newest first ("-" prefix = descending). This request isn't paginated, so an
+            # author with a large back catalogue (main series + dramatized adaptations +
+            # translations) would otherwise fill all 50 slots with old titles and the
+            # release checker would never see anything new.
+            "products_sort_by": "-ReleaseDate",
             "response_groups": "product_desc,product_attrs,media,series",
         }
 
