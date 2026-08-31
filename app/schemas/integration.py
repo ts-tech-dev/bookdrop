@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 from app.models.enums import BookFormat, BookStatus
+from app.utils.dates import derive_book_status
 
 if TYPE_CHECKING:
     from app.models import Book
@@ -40,7 +41,7 @@ class ReleaseItem(BaseModel):
             title=book.title,
             author=book.author.name,
             format=book.format,
-            status=book.status,
+            status=derive_book_status(book.release_date, today),
             release_date=book.release_date,
             announced_date=book.announced_date,
             days_until=days_until,
