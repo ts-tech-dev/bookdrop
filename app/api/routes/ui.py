@@ -164,6 +164,12 @@ _INDEX_HTML = """<!doctype html>
   }
   .chip.is-active { color: #fff; background: var(--accent); border-color: var(--accent); }
   @media (prefers-color-scheme: dark) { .chip.is-active { color: #16151a; } }
+  .chip.action { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .chip.action svg { width: 0.9rem; height: 0.9rem; }
+  .chip.action[disabled] { opacity: 0.6; cursor: default; }
+  .chip.action.spinning svg { animation: spin 0.7s linear infinite; }
+  .sync-status { color: var(--muted); font-size: 0.85rem; align-self: center; }
+  .sync-status.err { color: var(--accent-2); }
   .stats {
     align-items: center;
     gap: 0.5rem;
@@ -406,6 +412,15 @@ _INDEX_HTML = """<!doctype html>
         <button class="chip" data-filter="announced">Announced</button>
         <button class="chip" data-filter="released">Released</button>
       </div>
+      <button id="sync-btn" class="chip action" type="button"
+        title="Re-import the author list from Audiobookshelf now">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>
+        </svg>
+        Import authors
+      </button>
+      <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
     </div>
     <div id="stats" class="stats" style="display:none">
       <span><strong id="c-books">0</strong> books</span>
@@ -687,6 +702,33 @@ async function load() {
 window.addEventListener('scroll', () => {
   document.querySelector('header').classList.toggle('scrolled', window.scrollY > 8);
 }, { passive: true });
+
+$('sync-btn').addEventListener('click', async () => {
+  const btn = $('sync-btn');
+  const status = $('sync-status');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  status.classList.remove('err');
+  status.textContent = 'Importing from Audiobookshelf…';
+  try {
+    const res = await fetch('/audiobookshelf/import-authors', { method: 'POST' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || ('HTTP ' + res.status));
+    const n = Array.isArray(body) ? body.length : 0;
+    if (n > 0) {
+      status.textContent = 'Added ' + n + ' author' + (n === 1 ? '' : 's') + '. Reloading…';
+      setTimeout(() => location.reload(), 900);
+    } else {
+      status.textContent = 'No new authors.';
+    }
+  } catch (err) {
+    status.classList.add('err');
+    status.textContent = 'Import failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+  }
+});
 
 load().catch((err) => {
   $('loading').innerHTML = 'Failed to load: ' + err;

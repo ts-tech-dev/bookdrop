@@ -1,6 +1,14 @@
+import logging
+
 import httpx
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.models import Author
+from app.models.enums import AuthorSource
+from app.services.subscriptions import subscribe_all_users_to_author
+
+logger = logging.getLogger(__name__)
 
 
 class AudiobookshelfClient:
@@ -32,3 +40,35 @@ class AudiobookshelfClient:
                 authors.extend(response.json().get("authors", []))
 
         return authors
+
+
+async def import_authors(db: Session) -> list[Author]:
+    """Pull the author list from Audiobookshelf and create rows for any not seen yet.
+
+    Shared by the ``/audiobookshelf/import-authors`` endpoint and the scheduled
+    author-import job. Raises ``RuntimeError`` if Audiobookshelf is not configured.
+    """
+    client = AudiobookshelfClient()
+    remote_authors = await client.list_authors()
+
+    imported: list[Author] = []
+    for remote in remote_authors:
+        abs_id = remote.get("id")
+        existing = db.query(Author).filter(Author.audiobookshelf_author_id == abs_id).first()
+        if existing is not None:
+            continue
+
+        author = Author(
+            name=remote.get("name", "Unknown author"),
+            source=AuthorSource.AUDIOBOOKSHELF,
+            audiobookshelf_author_id=abs_id,
+        )
+        db.add(author)
+        imported.append(author)
+
+    db.commit()
+    for author in imported:
+        db.refresh(author)
+        subscribe_all_users_to_author(db, author)
+
+    return imported

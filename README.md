@@ -52,6 +52,7 @@ All configuration is via environment variables (see `.env.example`), prefixed wi
 | `BOOKDROP_AUDIBLE_MARKETPLACE` | Audible marketplace to query (`us`, `uk`, `de`, `fr`, `ca`, `au`). |
 | `BOOKDROP_RELEASE_CHECK_INTERVAL_MINUTES` | How often to poll Audible/Google Books for tracked authors. |
 | `BOOKDROP_DAILY_DIGEST_HOUR_UTC` | Hour of day (UTC, 0-23) each user gets a digest of all upcoming books for their subscribed authors. |
+| `BOOKDROP_AUDIOBOOKSHELF_IMPORT_INTERVAL_MINUTES` | How often to re-import the author list from Audiobookshelf (default `1440` = daily). `0` disables the scheduled job; the "Import authors" button in the web UI still works. |
 | `BOOKDROP_INTEGRATION_API_TOKEN` | If set, `/api/v1` requires it via `Authorization: Bearer <token>` or `X-API-Key`. Unset = open. |
 | `BOOKDROP_CORS_ALLOW_ORIGINS` | Comma-separated origins allowed to call the API from a browser, or `*` (default). |
 
