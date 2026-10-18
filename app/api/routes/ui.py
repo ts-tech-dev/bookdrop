@@ -1,7 +1,24 @@
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 router = APIRouter(tags=["ui"])
+
+# The header's brand mark, with a heavier stroke so it stays legible at 16px and its own
+# light/dark colors (a favicon can't inherit the page's CSS variables).
+_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"
+  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+<style>
+  g { stroke: #3d5a80; }
+  @media (prefers-color-scheme: dark) { g { stroke: #93b4dd; } }
+</style>
+<g>
+  <path d="M3 14a13 13 0 0 1 26 0"/>
+  <path d="M3 14c2.3 0 3.6-2.2 4.4-5M29 14c-2.3 0-3.6-2.2-4.4-5M16 3v6M11 14l5 5 5-5"/>
+  <rect x="11.5" y="18.5" width="9" height="9.5" rx="1.5"/>
+  <path d="M16 19v9.5"/>
+</g>
+</svg>
+"""
 
 _INDEX_HTML = """<!doctype html>
 <html lang="en">
@@ -9,6 +26,7 @@ _INDEX_HTML = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bookdrop</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link
@@ -1196,3 +1214,12 @@ loadRecs().catch((err) => {
 @router.get("/", response_class=HTMLResponse)
 def index() -> str:
     return _INDEX_HTML
+
+
+@router.get("/favicon.svg", include_in_schema=False)
+def favicon() -> Response:
+    return Response(
+        _FAVICON_SVG,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
