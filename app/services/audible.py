@@ -40,3 +40,39 @@ class AudibleClient:
             response.raise_for_status()
 
         return response.json().get("products", [])
+
+    async def get_product(self, asin: str) -> dict | None:
+        params = {"response_groups": "product_desc,product_attrs,series"}
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(f"{self._base_url}/{asin}", params=params)
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+
+        return response.json().get("product")
+
+    async def similar_products(
+        self, asin: str, similarity_type: str, num_results: int = 20
+    ) -> list[dict]:
+        """Audible's "listeners also enjoyed" style lookup for a single title.
+
+        ``similarity_type`` is one of Audible's ``RawSimilarities``, ``InTheSameSeries``,
+        ``ByTheSameAuthor`` or ``ByTheSameNarrator``. Audible caps ``num_results`` at 50.
+        """
+        params: dict[str, str | int] = {
+            "similarity_type": similarity_type,
+            "num_results": min(num_results, 50),
+            "response_groups": "product_desc,product_attrs,media,series,contributors",
+        }
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(f"{self._base_url}/{asin}/sims", params=params)
+            response.raise_for_status()
+
+        return response.json().get("similar_products", [])
+
+    def product_url(self, asin: str) -> str:
+        """The public store page for a title, on the configured marketplace's site."""
+        host = _MARKETPLACE_HOSTS.get(self._settings.audible_marketplace, _MARKETPLACE_HOSTS["us"])
+        return f"https://{host.replace('api.', 'www.', 1)}/pd/{asin}"

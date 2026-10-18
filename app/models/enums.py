@@ -30,3 +30,8 @@ class NotificationFrequency(enum.StrEnum):
 class NotificationMode(enum.StrEnum):
     NEW_ONLY = "new_only"
     UNTIL_RELEASE = "until_release"
+
+
+class RecommendationKind(enum.StrEnum):
+    NEXT_IN_SERIES = "next_in_series"
+    SIMILAR = "similar"

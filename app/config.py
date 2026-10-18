@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # How often to re-import the author list from Audiobookshelf. 0 disables the job
     # (authors can still be imported on demand from the web UI / API).
     audiobookshelf_import_interval_minutes: int = 1440
+    # How often to rebuild the "For you" recommendations from the Audiobookshelf library.
+    # 0 disables the job (the web UI's refresh button still works).
+    recommendation_refresh_interval_minutes: int = 1440
 
     # Integration API (/api/v1), consumed by other services (e.g. a homepage dashboard)
     integration_api_token: str | None = None

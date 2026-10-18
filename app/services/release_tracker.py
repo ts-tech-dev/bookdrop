@@ -13,7 +13,7 @@ from app.utils.dates import parse_date
 logger = logging.getLogger(__name__)
 
 
-def _is_english(language: str | None) -> bool:
+def is_english(language: str | None) -> bool:
     """True for English or unlabeled editions; Audible uses "english", Google Books "en"."""
     if language is None:
         return True
@@ -92,7 +92,7 @@ def _upsert_audible_book(db: Session, author: Author, product: dict) -> Book | N
     if external_id is None:
         return None
 
-    if not _is_english(product.get("language")):
+    if not is_english(product.get("language")):
         return None
 
     existing = (
@@ -126,7 +126,7 @@ def _upsert_google_books_book(db: Session, author: Author, volume: dict) -> Book
         return None
 
     info = volume.get("volumeInfo", {})
-    if not _is_english(info.get("language")):
+    if not is_english(info.get("language")):
         return None
 
     existing = (

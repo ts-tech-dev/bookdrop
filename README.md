@@ -8,6 +8,9 @@ announce or release new books and audiobooks.
 - Manually add authors to follow, or import your author list from an
   [Audiobookshelf](https://www.audiobookshelf.org/) instance.
 - Looks up new and upcoming titles via the Audible catalog and the Google Books API.
+- A "For you" tab with reading recommendations built from your Audiobookshelf library:
+  the next unowned book in each series you're reading, plus titles Audible pairs with
+  your most recently added books.
 - Sends each user a daily digest of every upcoming book across their subscribed authors,
   in addition to per-release notifications.
 - Per-user notification settings:
@@ -53,6 +56,7 @@ All configuration is via environment variables (see `.env.example`), prefixed wi
 | `BOOKDROP_RELEASE_CHECK_INTERVAL_MINUTES` | How often to poll Audible/Google Books for tracked authors. |
 | `BOOKDROP_DAILY_DIGEST_HOUR_UTC` | Hour of day (UTC, 0-23) each user gets a digest of all upcoming books for their subscribed authors. |
 | `BOOKDROP_AUDIOBOOKSHELF_IMPORT_INTERVAL_MINUTES` | How often to re-import the author list from Audiobookshelf (default `1440` = daily). `0` disables the scheduled job; the "Import authors" button in the web UI still works. |
+| `BOOKDROP_RECOMMENDATION_REFRESH_INTERVAL_MINUTES` | How often to rebuild the "For you" tab's recommendations from the Audiobookshelf library (default `1440` = daily). `0` disables the scheduled job; the "Refresh" button on that tab still works. |
 | `BOOKDROP_INTEGRATION_API_TOKEN` | If set, `/api/v1` requires it via `Authorization: Bearer <token>` or `X-API-Key`. Unset = open. |
 | `BOOKDROP_CORS_ALLOW_ORIGINS` | Comma-separated origins allowed to call the API from a browser, or `*` (default). |
 

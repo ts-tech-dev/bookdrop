@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.services.audiobookshelf import import_authors
 from app.services.digest import send_daily_digests
+from app.services.recommendations import refresh_recommendations
 from app.services.release_tracker import check_for_new_releases
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,15 @@ def start_scheduler() -> None:
             id="author_import",
             replace_existing=True,
         )
+    if settings.recommendation_refresh_interval_minutes > 0:
+        _scheduler.add_job(
+            _run_recommendation_refresh,
+            "interval",
+            minutes=settings.recommendation_refresh_interval_minutes,
+            start_date=_INTERVAL_ANCHOR,
+            id="recommendation_refresh",
+            replace_existing=True,
+        )
     _scheduler.start()
 
 
@@ -79,5 +89,17 @@ async def _run_author_import() -> None:
         logger.debug("Skipping Audiobookshelf author import: not configured")
     except Exception:
         logger.exception("Audiobookshelf author import failed")
+    finally:
+        db.close()
+
+
+async def _run_recommendation_refresh() -> None:
+    db = SessionLocal()
+    try:
+        await refresh_recommendations(db)
+    except RuntimeError:
+        logger.debug("Skipping recommendation refresh: Audiobookshelf not configured")
+    except Exception:
+        logger.exception("Recommendation refresh failed")
     finally:
         db.close()

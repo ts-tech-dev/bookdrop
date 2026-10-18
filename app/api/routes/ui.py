@@ -179,6 +179,58 @@ _INDEX_HTML = """<!doctype html>
   }
   .stats strong { color: var(--text); font-variant-numeric: tabular-nums; }
   .stat-sep { opacity: 0.5; }
+  [hidden] { display: none !important; }
+
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem 0.6rem;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .tab svg { width: 1rem; height: 1rem; }
+  .tab:hover { color: var(--text); }
+  .tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 0.4rem;
+  }
+  .tab[aria-selected="true"] { color: var(--accent); }
+  .tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0.55rem;
+    right: 0.55rem;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  .tab-count {
+    min-width: 1.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 1rem;
+    background: var(--accent-soft);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+  .tab-count:empty { display: none; }
 
   main { max-width: 70rem; margin: 0 auto; padding: 1.6rem 1.75rem 3rem; }
   #grid {
@@ -347,13 +399,124 @@ _INDEX_HTML = """<!doctype html>
   .fresh { color: var(--badge-released); background: var(--badge-released-bg); }
   .fresh::before { content: "✦"; margin-right: 0.3rem; }
 
-  #loading, #empty, #noresults {
+  .rec-section + .rec-section { margin-top: 2.4rem; }
+  .section-title { margin: 0; font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em; }
+  .section-sub { margin: 0.2rem 0 1rem; color: var(--muted); font-size: 0.86rem; }
+  .rec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19.5rem, 1fr));
+    gap: 1rem;
+  }
+  .rec {
+    position: relative;
+    display: flex;
+    gap: 0.95rem;
+    padding: 1rem 1.05rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 35ms);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .rec::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--spine, var(--accent)), transparent 78%);
+    opacity: 0.85;
+  }
+  .rec:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: color-mix(in srgb, var(--spine, var(--accent)) 45%, var(--border));
+  }
+  .rec-cover {
+    flex-shrink: 0;
+    display: block;
+    width: 5.4rem;
+    height: 5.4rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: var(--accent-soft);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  }
+  .rec-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rec-cover .cover-fallback { width: 100%; height: 100%; font-size: 1.8rem; }
+  .rec-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .rec-title {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.04rem;
+    line-height: 1.28;
+    color: inherit;
+    text-decoration: none;
+  }
+  a.rec-title:hover { color: var(--accent); }
+  .rec-author { color: var(--muted); font-size: 0.84rem; margin-top: 0.12rem; }
+  .rec-reason {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+  .rec-reason svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--accent-2);
+  }
+  .rec-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: auto;
+    padding-top: 0.65rem;
+  }
+  .mini-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .mini-btn svg { width: 0.8rem; height: 0.8rem; }
+  .mini-btn:hover:not([disabled]) {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+  .mini-btn.following {
+    color: var(--badge-released);
+    background: var(--badge-released-bg);
+    border-color: transparent;
+    cursor: default;
+  }
+  .mini-btn[disabled]:not(.following) { opacity: 0.6; cursor: default; }
+
+  #loading, #empty, #noresults, #recs-loading, #recs-empty {
     color: var(--muted);
     padding: 4.5rem 1rem;
     text-align: center;
     font-size: 0.95rem;
   }
-  #empty svg, #noresults svg {
+  .hint { font-size: 0.85rem; margin-top: 0.35rem; opacity: 0.85; }
+  #empty svg, #noresults svg, #recs-empty svg {
     width: 2.4rem;
     height: 2.4rem;
     opacity: 0.4;
@@ -399,7 +562,27 @@ _INDEX_HTML = """<!doctype html>
       <h1 class="display">Bookdrop</h1>
     </div>
     <p class="tagline">New books and audiobooks from the authors you follow.</p>
-    <div class="toolbar">
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" id="tab-shelf" role="tab" aria-selected="true"
+        aria-controls="panel-shelf" data-tab="shelf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/>
+          <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3"/>
+        </svg>
+        New releases
+      </button>
+      <button class="tab" id="tab-recs" role="tab" aria-selected="false"
+        aria-controls="panel-recs" data-tab="for-you" tabindex="-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3l2.4 5.3 5.6.6-4.2 3.8 1.2 5.6L12 15.4l-5 2.9 1.2-5.6L4 8.9l5.6-.6z"/>
+        </svg>
+        For you
+        <span class="tab-count" id="recs-count"></span>
+      </button>
+    </div>
+    <div class="toolbar" id="shelf-toolbar">
       <div class="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round">
@@ -422,6 +605,17 @@ _INDEX_HTML = """<!doctype html>
       </button>
       <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
     </div>
+    <div class="toolbar" id="recs-toolbar" hidden>
+      <button id="recs-refresh" class="chip action" type="button"
+        title="Rebuild recommendations from your Audiobookshelf library now">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>
+        </svg>
+        Refresh recommendations
+      </button>
+      <span id="recs-status" class="sync-status" role="status" aria-live="polite"></span>
+    </div>
     <div id="stats" class="stats" style="display:none">
       <span><strong id="c-books">0</strong> books</span>
       <span class="stat-sep">&middot;</span>
@@ -430,6 +624,7 @@ _INDEX_HTML = """<!doctype html>
   </div>
 </header>
 <main>
+<section id="panel-shelf" role="tabpanel" aria-labelledby="tab-shelf">
   <div id="loading"><div class="spinner"></div>Gathering your shelf&hellip;</div>
   <div id="empty" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
@@ -447,6 +642,32 @@ _INDEX_HTML = """<!doctype html>
     <div>Nothing matches that filter.</div>
   </div>
   <div id="grid"></div>
+</section>
+<section id="panel-recs" role="tabpanel" aria-labelledby="tab-recs" hidden>
+  <div id="recs-loading"><div class="spinner"></div>Finding your next read&hellip;</div>
+  <div id="recs-empty" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l2.4 5.3 5.6.6-4.2 3.8 1.2 5.6L12 15.4l-5 2.9 1.2-5.6L4 8.9l5.6-.6z"/>
+    </svg>
+    <div>No recommendations yet.</div>
+    <div class="hint">They&rsquo;re built from your Audiobookshelf library &mdash;
+      use &ldquo;Refresh recommendations&rdquo; to build them now.</div>
+  </div>
+  <div id="recs-content" hidden>
+    <section class="rec-section" id="sec-series">
+      <h2 class="section-title display">Continue a series</h2>
+      <p class="section-sub">The next book in series you&rsquo;ve started.</p>
+      <div class="rec-grid" id="grid-series"></div>
+    </section>
+    <section class="rec-section" id="sec-similar">
+      <h2 class="section-title display">You might like</h2>
+      <p class="section-sub">Titles Audible pairs with books recently added to your
+        library.</p>
+      <div class="rec-grid" id="grid-similar"></div>
+    </section>
+  </div>
+</section>
 </main>
 <footer class="wrap">Bookdrop &mdash; your personal new-release radar.</footer>
 <script>
@@ -688,9 +909,9 @@ async function load() {
   }
 
   $('search').addEventListener('input', applyFilters);
-  for (const chip of document.querySelectorAll('.chip')) {
+  for (const chip of document.querySelectorAll('.chips .chip')) {
     chip.addEventListener('click', () => {
-      const cur = document.querySelector('.chip.is-active');
+      const cur = document.querySelector('.chips .chip.is-active');
       if (cur) cur.classList.remove('is-active');
       chip.classList.add('is-active');
       activeFilter = chip.dataset.filter;
@@ -730,8 +951,241 @@ $('sync-btn').addEventListener('click', async () => {
   }
 });
 
+function showTab(name) {
+  const recs = name === 'for-you';
+  for (const tab of document.querySelectorAll('.tab')) {
+    const on = tab.dataset.tab === (recs ? 'for-you' : 'shelf');
+    tab.setAttribute('aria-selected', String(on));
+    tab.tabIndex = on ? 0 : -1;
+  }
+  $('panel-shelf').hidden = recs;
+  $('shelf-toolbar').hidden = recs;
+  $('stats').hidden = recs;
+  $('panel-recs').hidden = !recs;
+  $('recs-toolbar').hidden = !recs;
+  const hash = recs ? '#for-you' : '';
+  if (location.hash !== hash) {
+    history.replaceState(null, '', location.pathname + location.search + hash);
+  }
+}
+
+for (const tab of document.querySelectorAll('.tab')) {
+  tab.addEventListener('click', () => showTab(tab.dataset.tab));
+  tab.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const tabs = [...document.querySelectorAll('.tab')];
+    const next = tabs[(tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) %
+      tabs.length];
+    showTab(next.dataset.tab);
+    next.focus();
+  });
+}
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+
+const SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5' +
+  'M15.5 8.5L18 6"/></svg>';
+const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+  'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+let followed = new Set();
+
+function ago(iso) {
+  // DB timestamps are naive UTC.
+  const t = new Date(/Z|[+-]\\d\\d:\\d\\d$/.test(iso) ? iso : iso + 'Z');
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + ' h ago';
+  const d = Math.round(h / 24);
+  return d + ' day' + (d === 1 ? '' : 's') + ' ago';
+}
+
+function setFollowing(btn) {
+  btn.classList.add('following');
+  btn.disabled = true;
+  btn.innerHTML = CHECK + 'Following';
+}
+
+async function follow(name, btn) {
+  btn.disabled = true;
+  const status = $('recs-status');
+  status.classList.remove('err');
+  try {
+    const res = await fetch('/authors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    followed.add(name.toLowerCase());
+    for (const other of document.querySelectorAll('.follow-btn')) {
+      if (other.dataset.author === name.toLowerCase()) setFollowing(other);
+    }
+    status.textContent = 'Following ' + name +
+      ' — their releases appear under New releases after the next check.';
+  } catch (err) {
+    btn.disabled = false;
+    status.classList.add('err');
+    status.textContent = 'Could not follow ' + name + ': ' + err.message;
+  }
+}
+
+function recCard(r, i) {
+  const card = document.createElement('article');
+  card.className = 'rec';
+  card.style.setProperty('--i', String(Math.min(i, 12)));
+  card.style.setProperty('--spine', 'hsl(' + hueFor(r.author_name || r.title) + ' 58% 55%)');
+
+  const cover = document.createElement(r.url ? 'a' : 'div');
+  cover.className = 'rec-cover';
+  if (r.url) {
+    cover.href = r.url;
+    cover.target = '_blank';
+    cover.rel = 'noopener';
+    cover.tabIndex = -1;
+    cover.setAttribute('aria-hidden', 'true');
+  }
+  if (r.cover_url) {
+    const img = document.createElement('img');
+    img.src = r.cover_url;
+    img.loading = 'lazy';
+    img.alt = '';
+    cover.appendChild(img);
+  } else {
+    const fb = document.createElement('div');
+    fb.className = 'cover-fallback';
+    fb.textContent = initial(r.title);
+    cover.appendChild(fb);
+  }
+  card.appendChild(cover);
+
+  const info = document.createElement('div');
+  info.className = 'rec-info';
+
+  const title = document.createElement(r.url ? 'a' : 'div');
+  title.className = 'rec-title';
+  title.textContent = r.title;
+  if (r.url) {
+    title.href = r.url;
+    title.target = '_blank';
+    title.rel = 'noopener';
+  }
+  info.appendChild(title);
+
+  if (r.author_name) {
+    const a = document.createElement('div');
+    a.className = 'rec-author';
+    a.textContent = r.author_name;
+    info.appendChild(a);
+  }
+  if (r.series) {
+    const s = document.createElement('div');
+    s.className = 'book-series';
+    s.textContent = r.series + (r.series_sequence ? ' #' + r.series_sequence : '');
+    info.appendChild(s);
+  }
+
+  const reason = document.createElement('div');
+  reason.className = 'rec-reason';
+  reason.insertAdjacentHTML('beforeend', SPARK);
+  reason.insertAdjacentText('beforeend', r.reason);
+  info.appendChild(reason);
+
+  const actions = document.createElement('div');
+  actions.className = 'rec-actions';
+  const rel = relRelease(r.release_date);
+  if (rel) {
+    const c = document.createElement('span');
+    c.className = 'countdown' + (rel.soon ? ' soon' : '');
+    c.textContent = rel.text;
+    actions.appendChild(c);
+  }
+  if (r.author_name) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mini-btn follow-btn';
+    btn.dataset.author = r.author_name.toLowerCase();
+    if (followed.has(btn.dataset.author)) {
+      setFollowing(btn);
+    } else {
+      btn.innerHTML = PLUS + 'Follow author';
+      btn.title = 'Track new releases from ' + r.author_name;
+      btn.addEventListener('click', () => follow(r.author_name, btn));
+    }
+    actions.appendChild(btn);
+  }
+  info.appendChild(actions);
+
+  card.appendChild(info);
+  return card;
+}
+
+function renderRecs(recs) {
+  $('recs-loading').hidden = true;
+  $('recs-count').textContent = recs.length ? String(recs.length) : '';
+  $('recs-empty').hidden = recs.length > 0;
+  $('recs-content').hidden = recs.length === 0;
+
+  const groups = [
+    ['next_in_series', 'sec-series', 'grid-series'],
+    ['similar', 'sec-similar', 'grid-similar'],
+  ];
+  for (const [kind, section, gridId] of groups) {
+    const list = recs.filter((r) => r.kind === kind);
+    const grid = $(gridId);
+    grid.replaceChildren(...list.map(recCard));
+    $(section).hidden = list.length === 0;
+  }
+
+  const status = $('recs-status');
+  status.classList.remove('err');
+  status.textContent = recs.length ? 'Updated ' + ago(recs[0].created_at) : '';
+}
+
+async function loadRecs() {
+  const [recsRes, authorsRes] = await Promise.all([
+    fetch('/recommendations'), fetch('/authors'),
+  ]);
+  const recs = await recsRes.json();
+  const authors = await authorsRes.json();
+  followed = new Set(authors.map((a) => a.name.toLowerCase()));
+  renderRecs(recs);
+}
+
+$('recs-refresh').addEventListener('click', async () => {
+  const btn = $('recs-refresh');
+  const status = $('recs-status');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  status.classList.remove('err');
+  status.textContent = 'Reading your library and asking Audible… this can take a minute.';
+  try {
+    const res = await fetch('/recommendations/refresh', { method: 'POST' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || ('HTTP ' + res.status));
+    renderRecs(body);
+  } catch (err) {
+    status.classList.add('err');
+    status.textContent = 'Refresh failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+  }
+});
+
+showTab(location.hash.slice(1));
+
 load().catch((err) => {
   $('loading').innerHTML = 'Failed to load: ' + err;
+});
+loadRecs().catch((err) => {
+  $('recs-loading').innerHTML = 'Failed to load: ' + err;
 });
 </script>
 </body>
