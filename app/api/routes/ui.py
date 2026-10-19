@@ -347,23 +347,29 @@ _INDEX_HTML = """<!doctype html>
     border-bottom: 1px solid var(--border);
   }
   .book:last-child { border-bottom: none; }
-  .book > img, .book > .cover-fallback {
+  .book-cover {
+    display: block;
+    text-decoration: none;
     width: 3.1rem;
     height: 3.1rem;
-    object-fit: cover;
     border-radius: 0.45rem;
+    overflow: hidden;
     background: var(--accent-soft);
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
-    font-size: 1.15rem;
   }
+  .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .book-cover .cover-fallback { width: 100%; height: 100%; font-size: 1.15rem; }
   .book-info { flex: 1; min-width: 0; }
   .book-title {
     font-family: "Fraunces", Georgia, serif;
     font-weight: 500;
     font-size: 1rem;
     line-height: 1.3;
+    color: inherit;
+    text-decoration: none;
   }
+  a.book-title:hover { color: var(--accent); }
   .book-series {
     color: var(--accent);
     font-size: 0.78rem;
@@ -441,7 +447,7 @@ _INDEX_HTML = """<!doctype html>
     .book .icon-btn { opacity: 0; }
     .book:hover .icon-btn, .book:focus-within .icon-btn { opacity: 1; }
   }
-  .book[data-dismissed="true"] > img, .book[data-dismissed="true"] > .cover-fallback {
+  .book[data-dismissed="true"] > .book-cover {
     filter: grayscale(0.8);
     opacity: 0.6;
   }
@@ -522,6 +528,7 @@ _INDEX_HTML = """<!doctype html>
   .rec-cover {
     flex-shrink: 0;
     display: block;
+    text-decoration: none;
     width: 5.4rem;
     height: 5.4rem;
     border-radius: 0.5rem;
@@ -773,6 +780,14 @@ const ICONS = {
     '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/>' +
     '<path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3"/></svg>',
 };
+
+// Goodreads has no ID we can derive from an Audible ASIN or Google Books ID, so link to
+// a title + author search. Its iOS/Android apps claim goodreads.com links, so phones
+// open the app.
+function goodreadsUrl(title, author) {
+  const q = [title, author].filter(Boolean).join(' ');
+  return 'https://www.goodreads.com/search?q=' + encodeURIComponent(q);
+}
 
 function initial(str) { return ((str || '').trim()[0] || '?'); }
 
@@ -1051,25 +1066,38 @@ async function load() {
       row.dataset.id = String(b.id);
       row.dataset.title = b.title;
 
+      const link = goodreadsUrl(b.title, author.name);
+      const cover = document.createElement('a');
+      cover.className = 'book-cover';
+      cover.href = link;
+      cover.target = '_blank';
+      cover.rel = 'noopener';
+      cover.tabIndex = -1;
+      cover.setAttribute('aria-hidden', 'true');
       if (b.cover_url) {
         const img = document.createElement('img');
         img.src = b.cover_url;
         img.loading = 'lazy';
         img.alt = '';
-        row.appendChild(img);
+        cover.appendChild(img);
       } else {
         const fb = document.createElement('div');
         fb.className = 'cover-fallback';
         fb.textContent = initial(b.title);
-        row.appendChild(fb);
+        cover.appendChild(fb);
       }
+      row.appendChild(cover);
 
       const info = document.createElement('div');
       info.className = 'book-info';
 
-      const title = document.createElement('div');
+      const title = document.createElement('a');
       title.className = 'book-title';
       title.textContent = b.title;
+      title.href = link;
+      title.target = '_blank';
+      title.rel = 'noopener';
+      title.title = 'Open on Goodreads';
       info.appendChild(title);
 
       if (b.series) {
@@ -1258,20 +1286,13 @@ async function follow(name, btn) {
   }
 }
 
-// Goodreads has no ID we can derive from an Audible ASIN, so link to a title + author
-// search. Its iOS/Android apps claim goodreads.com links, so phones open the app.
-function goodreadsUrl(r) {
-  const q = [r.title, r.author_name].filter(Boolean).join(' ');
-  return 'https://www.goodreads.com/search?q=' + encodeURIComponent(q);
-}
-
 function recCard(r, i) {
   const card = document.createElement('article');
   card.className = 'rec';
   card.style.setProperty('--i', String(Math.min(i, 12)));
   card.style.setProperty('--spine', 'hsl(' + hueFor(r.author_name || r.title) + ' 58% 55%)');
 
-  const link = goodreadsUrl(r);
+  const link = goodreadsUrl(r.title, r.author_name);
   const cover = document.createElement('a');
   cover.className = 'rec-cover';
   cover.href = link;
