@@ -18,6 +18,7 @@ def upcoming_releases(
     include_undated: bool = True,
     limit: int | None = None,
     today: date | None = None,
+    since: date | None = None,
 ) -> list[Book]:
     """Books that haven't been released yet, across every tracked author.
 
@@ -27,10 +28,12 @@ def upcoming_releases(
     - Multiple editions of the same title (e.g. an Audible and a Google Books row) are
       collapsed to one, matching the web UI and the digest.
     - Titles the user has stopped monitoring are left out.
+    - `since` moves the earliest included release date back from `today`, for callers
+      that also want recent releases (e.g. the calendar feed keeps last month's events).
     """
     today = today or date.today()
 
-    dated = Book.release_date >= today
+    dated = Book.release_date >= (since or today)
     if within_days is not None:
         dated = dated & (Book.release_date <= today + timedelta(days=within_days))
     date_filter = dated | Book.release_date.is_(None) if include_undated else dated

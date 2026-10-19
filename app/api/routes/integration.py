@@ -2,14 +2,15 @@
 
 Kept separate from the internal resource routers so the shape can stay stable for external
 consumers. When `BOOKDROP_INTEGRATION_API_TOKEN` is set, every endpoint here requires it
-via `Authorization: Bearer <token>` or an `X-API-Key` header; otherwise the API is open
-(the common single-user homelab case). CORS is configured in `app/main.py`.
+via `Authorization: Bearer <token>`, an `X-API-Key` header, or a `token` query parameter
+(calendar apps subscribing to `releases.ics` can't send headers); otherwise the API is
+open (the common single-user homelab case). CORS is configured in `app/main.py`.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -22,6 +23,7 @@ from app.schemas.integration import (
     ReleaseItem,
     UpcomingReleasesResponse,
 )
+from app.services.calendar_feed import build_release_calendar
 from app.services.digest import bucket_books
 from app.services.releases import tracked_author_count, upcoming_releases
 from app.utils.time import utcnow
@@ -30,12 +32,13 @@ from app.utils.time import utcnow
 def verify_api_token(
     authorization: Annotated[str | None, Header()] = None,
     x_api_key: Annotated[str | None, Header()] = None,
+    token: Annotated[str | None, Query(include_in_schema=False)] = None,
 ) -> None:
     expected = get_settings().integration_api_token
     if not expected:
         return
 
-    presented = x_api_key
+    presented = x_api_key or token
     if authorization and authorization.lower().startswith("bearer "):
         presented = authorization[len("bearer ") :].strip()
 
@@ -100,6 +103,33 @@ def get_release_calendar(
         for label, bucket in buckets.items()
     ]
     return ReleaseCalendarResponse(generated_at=utcnow(), sections=sections)
+
+
+@router.get(
+    "/releases.ics",
+    response_class=Response,
+    responses={200: {"content": {"text/calendar": {}}}},
+)
+def get_release_ics(
+    db: Session = Depends(get_db),
+    book_format: FormatFilter = None,
+    past_days: Annotated[int, Query(ge=0, le=365)] = 30,
+) -> Response:
+    """Subscribable iCalendar feed: one all-day event per release, from `past_days` ago
+    onwards, so a release stays on the calendar for a while after it lands."""
+    today = date.today()
+    books = upcoming_releases(
+        db,
+        formats=[book_format] if book_format else None,
+        include_undated=False,
+        today=today,
+        since=today - timedelta(days=past_days),
+    )
+    return Response(
+        content=build_release_calendar(books, now=utcnow()),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'inline; filename="bookdrop.ics"'},
+    )
 
 
 @router.get("/stats", response_model=IntegrationStatsResponse)

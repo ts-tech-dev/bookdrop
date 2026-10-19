@@ -697,6 +697,14 @@ _INDEX_HTML = """<!doctype html>
         </svg>
         Import authors
       </button>
+      <button id="cal-btn" class="chip action" type="button"
+        title="Subscribe to release dates in your calendar app">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>
+        </svg>
+        Calendar
+      </button>
       <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
     </div>
     <div class="toolbar" id="recs-toolbar" hidden>
@@ -1173,6 +1181,47 @@ async function load() {
 window.addEventListener('scroll', () => {
   document.querySelector('header').classList.toggle('scrolled', window.scrollY > 8);
 }, { passive: true });
+
+// Apple's Calendar (iPhone, iPad, Mac) subscribes when handed a webcal:// link; other
+// platforms have no reliable handler, so copy the https URL for "add calendar from URL".
+const CAL_URL = location.origin + '/api/v1/releases.ics';
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // navigator.clipboard is unavailable over plain http (the usual homelab setup).
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand('copy');
+  ta.remove();
+  if (!ok) throw new Error('copy failed');
+}
+
+async function copyCalendarUrl() {
+  try {
+    await copyText(CAL_URL);
+    toast('Calendar link copied. Paste it into your calendar app’s ' +
+      '“Add calendar from URL” / subscribe option.');
+  } catch (err) {
+    toast('Subscribe to this address in your calendar app: ' + CAL_URL);
+  }
+}
+
+$('cal-btn').addEventListener('click', () => {
+  if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
+    location.href = CAL_URL.replace(/^https?:/, 'webcal:');
+    toast('Opening Calendar…', { label: 'Copy link', run: copyCalendarUrl });
+  } else {
+    copyCalendarUrl();
+  }
+});
 
 $('sync-btn').addEventListener('click', async () => {
   const btn = $('sync-btn');
