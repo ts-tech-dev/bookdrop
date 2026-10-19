@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models import Author, Book
 from app.models.enums import BookFormat
+from app.services.dismissals import dismissed_keys, edition_key
 
 
 def upcoming_releases(
@@ -25,6 +26,7 @@ def upcoming_releases(
       these are always sorted last and are unaffected by `within_days`.
     - Multiple editions of the same title (e.g. an Audible and a Google Books row) are
       collapsed to one, matching the web UI and the digest.
+    - Titles the user has stopped monitoring are left out.
     """
     today = today or date.today()
 
@@ -39,10 +41,12 @@ def upcoming_releases(
 
     books = query.order_by(Book.release_date.asc()).all()
 
+    dismissed = dismissed_keys(db)
     deduped: dict[tuple[int, str], Book] = {}
     for book in books:
-        key = (book.author_id, book.title.strip().lower())
-        deduped.setdefault(key, book)
+        key = edition_key(book)
+        if key not in dismissed:
+            deduped.setdefault(key, book)
 
     result = list(deduped.values())
     # SQLite orders NULLs first on ASC; force undated releases to the end instead.

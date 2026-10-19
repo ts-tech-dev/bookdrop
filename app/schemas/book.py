@@ -21,6 +21,9 @@ class BookRead(BaseModel):
     series: str | None
     series_sequence: str | None
     created_at: datetime
+    # Only meaningful on `GET /books?include_dismissed=true`; otherwise dismissed books are
+    # left out entirely.
+    dismissed: bool = False
 
     @model_validator(mode="after")
     def _resolve_status(self) -> "BookRead":

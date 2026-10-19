@@ -10,6 +10,7 @@ from app.utils.time import utcnow
 
 if TYPE_CHECKING:
     from app.models.book import Book
+    from app.models.dismissal import DismissedBook
     from app.models.subscription import AuthorSubscription
 
 
@@ -30,5 +31,8 @@ class Author(Base):
         back_populates="author", cascade="all, delete-orphan"
     )
     subscribers: Mapped[list["AuthorSubscription"]] = relationship(
+        back_populates="author", cascade="all, delete-orphan"
+    )
+    dismissed_books: Mapped[list["DismissedBook"]] = relationship(
         back_populates="author", cascade="all, delete-orphan"
     )

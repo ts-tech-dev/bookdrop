@@ -417,6 +417,75 @@ _INDEX_HTML = """<!doctype html>
   .fresh { color: var(--badge-released); background: var(--badge-released-bg); }
   .fresh::before { content: "✦"; margin-right: 0.3rem; }
 
+  .book-action { align-self: center; flex-shrink: 0; }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.55rem;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  .icon-btn svg { width: 1.05rem; height: 1.05rem; }
+  .icon-btn:hover, .icon-btn:focus-visible {
+    color: var(--accent-2);
+    background: color-mix(in srgb, var(--accent-2) 13%, transparent);
+  }
+  .icon-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+  .icon-btn[disabled] { opacity: 0.4; cursor: default; }
+  /* On pointer devices, reveal the remove button on hover/focus so rows stay calm. */
+  @media (hover: hover) {
+    .book .icon-btn { opacity: 0; }
+    .book:hover .icon-btn, .book:focus-within .icon-btn { opacity: 1; }
+  }
+  .book[data-dismissed="true"] > img, .book[data-dismissed="true"] > .cover-fallback {
+    filter: grayscale(0.8);
+    opacity: 0.6;
+  }
+  .book.leaving { animation: leave 0.22s ease forwards; }
+  @keyframes leave { to { opacity: 0; transform: translateX(14px); } }
+  .chip-count { margin-left: 0.3rem; font-variant-numeric: tabular-nums; opacity: 0.75; }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.65rem 0.7rem 0.65rem 1.1rem;
+    border-radius: 0.8rem;
+    background: var(--text);
+    color: var(--bg);
+    box-shadow: var(--shadow-lg);
+    font-size: 0.88rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.8rem);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  #toast.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+  #toast.err { background: var(--accent-2); }
+  #toast button {
+    flex-shrink: 0;
+    padding: 0.32rem 0.7rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--bg) 20%, transparent);
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #toast button:hover { background: color-mix(in srgb, var(--bg) 32%, transparent); }
+
   .rec-section + .rec-section { margin-top: 2.4rem; }
   .section-title { margin: 0; font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em; }
   .section-sub { margin: 0.2rem 0 1rem; color: var(--muted); font-size: 0.86rem; }
@@ -612,6 +681,9 @@ _INDEX_HTML = """<!doctype html>
         <button class="chip is-active" data-filter="all">All</button>
         <button class="chip" data-filter="announced">Announced</button>
         <button class="chip" data-filter="released">Released</button>
+        <button class="chip" data-filter="hidden" id="hidden-chip" hidden
+          title="Books you stopped monitoring">Hidden<span class="chip-count"
+          id="c-hidden"></span></button>
       </div>
       <button id="sync-btn" class="chip action" type="button"
         title="Re-import the author list from Audiobookshelf now">
@@ -657,7 +729,7 @@ _INDEX_HTML = """<!doctype html>
       stroke-width="2" stroke-linecap="round">
       <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
     </svg>
-    <div>Nothing matches that filter.</div>
+    <div id="noresults-text">Nothing matches that filter.</div>
   </div>
   <div id="grid"></div>
 </section>
@@ -687,6 +759,7 @@ _INDEX_HTML = """<!doctype html>
   </div>
 </section>
 </main>
+<div id="toast" role="status" aria-live="polite"><span id="toast-text"></span></div>
 <footer class="wrap">Bookdrop &mdash; your personal new-release radar.</footer>
 <script>
 const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -763,19 +836,142 @@ function applyFilters() {
     const nameMatch = card.dataset.name.includes(q);
     let visible = 0;
     for (const row of card.querySelectorAll('.book')) {
-      const ok = activeFilter === 'all' || row.dataset.status === activeFilter;
+      const dismissed = row.dataset.dismissed === 'true';
+      const ok = activeFilter === 'hidden' ? dismissed
+        : !dismissed && (activeFilter === 'all' || row.dataset.status === activeFilter);
       row.style.display = ok ? '' : 'none';
       if (ok) visible++;
     }
     const show = nameMatch && visible > 0;
     card.style.display = show ? '' : 'none';
+    // Hidden books are what you came to that view for; don't make you expand each author.
+    if (show && activeFilter === 'hidden') card.open = true;
     if (show) shown++;
   }
+  $('noresults-text').textContent = activeFilter === 'hidden'
+    ? 'No hidden books.' : 'Nothing matches that filter.';
   $('noresults').style.display = (shown === 0 && grid.children.length > 0) ? 'block' : 'none';
 }
 
+function bookCountText(rows) {
+  const active = rows.filter((r) => r.dataset.dismissed !== 'true');
+  if (!active.length) return 'All hidden';
+  const upcoming = active.filter((r) => r.dataset.status === 'announced').length;
+  return active.length + ' book' + (active.length === 1 ? '' : 's') +
+    (upcoming ? ' · ' + upcoming + ' upcoming' : '');
+}
+
+// Recomputes the header stats, per-author counts and the Hidden chip from the rows, so
+// they stay right as books are hidden and restored.
+function updateCounts(animate) {
+  let books = 0;
+  let authors = 0;
+  let hidden = 0;
+  for (const card of $('grid').children) {
+    const rows = [...card.querySelectorAll('.book')];
+    card.querySelector('.author-count').textContent = bookCountText(rows);
+    const active = rows.filter((r) => r.dataset.dismissed !== 'true').length;
+    books += active;
+    hidden += rows.length - active;
+    if (active) authors++;
+  }
+  if (animate) {
+    countUp($('c-books'), books);
+    countUp($('c-authors'), authors);
+  } else {
+    $('c-books').textContent = books;
+    $('c-authors').textContent = authors;
+  }
+  $('c-hidden').textContent = hidden ? String(hidden) : '';
+  $('hidden-chip').hidden = hidden === 0 && activeFilter !== 'hidden';
+}
+
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M10.7 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2"/>' +
+  '<path d="M6.6 6.6C3.6 8.6 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/>' +
+  '<path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></svg>';
+const RESTORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>';
+
+let toastTimer = null;
+
+function toast(message, action, isError) {
+  const el = $('toast');
+  clearTimeout(toastTimer);
+  $('toast-text').textContent = message;
+  el.querySelector('button')?.remove();
+  if (action) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = action.label;
+    btn.addEventListener('click', () => {
+      el.classList.remove('show');
+      action.run();
+    });
+    el.appendChild(btn);
+  }
+  el.classList.toggle('err', !!isError);
+  el.classList.add('show');
+  toastTimer = setTimeout(() => el.classList.remove('show'), action ? 7000 : 4000);
+}
+
+function setRowDismissed(row, dismissed) {
+  row.dataset.dismissed = String(dismissed);
+  const btn = row.querySelector('.book-action');
+  const title = row.dataset.title;
+  if (dismissed) {
+    btn.className = 'book-action mini-btn';
+    btn.innerHTML = RESTORE + 'Restore';
+    btn.title = 'Start monitoring this book again';
+    btn.setAttribute('aria-label', 'Restore ' + title);
+  } else {
+    btn.className = 'book-action icon-btn';
+    btn.innerHTML = EYE_OFF;
+    btn.title = 'Not interested — stop monitoring this book';
+    btn.setAttribute('aria-label', 'Stop monitoring ' + title);
+  }
+}
+
+async function setDismissed(row, dismissed) {
+  const btn = row.querySelector('.book-action');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/books/' + row.dataset.id + '/dismiss',
+      { method: dismissed ? 'POST' : 'DELETE' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  } catch (err) {
+    btn.disabled = false;
+    toast('Couldn’t update “' + row.dataset.title + '”: ' + err.message, null, true);
+    return;
+  }
+
+  const finish = () => {
+    row.classList.remove('leaving');
+    setRowDismissed(row, dismissed);
+    btn.disabled = false;
+    updateCounts(false);
+    applyFilters();
+  };
+  // The row leaves whichever view it's in (the shelf when hiding, Hidden when restoring).
+  if (RM) finish();
+  else {
+    row.classList.add('leaving');
+    setTimeout(finish, 220);
+  }
+
+  if (dismissed) {
+    toast('Stopped monitoring “' + row.dataset.title + '”',
+      { label: 'Undo', run: () => setDismissed(row, false) });
+  } else {
+    toast('Monitoring “' + row.dataset.title + '” again');
+  }
+}
+
 async function load() {
-  const [authorsRes, booksRes] = await Promise.all([fetch('/authors'), fetch('/books')]);
+  const [authorsRes, booksRes] = await Promise.all([fetch('/authors'),
+    fetch('/books?include_dismissed=true')]);
   const authors = await authorsRes.json();
   const books = await booksRes.json();
 
@@ -797,8 +993,6 @@ async function load() {
   }
 
   $('stats').style.display = 'flex';
-  countUp($('c-books'), books.length);
-  countUp($('c-authors'), withBooks.length);
 
   const grid = $('grid');
   let idx = 0;
@@ -840,9 +1034,6 @@ async function load() {
     name.textContent = author.name;
     const count = document.createElement('div');
     count.className = 'author-count';
-    const upcoming = list.filter((b) => b.status === 'announced').length;
-    count.textContent = list.length + ' book' + (list.length === 1 ? '' : 's') +
-      (upcoming ? ' · ' + upcoming + ' upcoming' : '');
     meta.appendChild(name);
     meta.appendChild(count);
     summary.appendChild(meta);
@@ -860,6 +1051,8 @@ async function load() {
       const row = document.createElement('div');
       row.className = 'book';
       row.dataset.status = b.status;
+      row.dataset.id = String(b.id);
+      row.dataset.title = b.title;
 
       if (b.cover_url) {
         const img = document.createElement('img');
@@ -920,11 +1113,24 @@ async function load() {
       info.appendChild(sub);
 
       row.appendChild(info);
+
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'book-action';
+      action.addEventListener('click', () => {
+        setDismissed(row, row.dataset.dismissed !== 'true');
+      });
+      row.appendChild(action);
+      setRowDismissed(row, b.dismissed);
+
       booksEl.appendChild(row);
     }
     el.appendChild(booksEl);
     grid.appendChild(el);
   }
+
+  updateCounts(true);
+  applyFilters();
 
   $('search').addEventListener('input', applyFilters);
   for (const chip of document.querySelectorAll('.chips .chip')) {
@@ -933,6 +1139,7 @@ async function load() {
       if (cur) cur.classList.remove('is-active');
       chip.classList.add('is-active');
       activeFilter = chip.dataset.filter;
+      updateCounts(false);
       applyFilters();
     });
   }

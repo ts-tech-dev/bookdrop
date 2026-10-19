@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.models import AuthorSubscription, Book, User
 from app.models.enums import NotificationChannel
 from app.services.discord import DiscordNotifier, book_embed, bucket_embeds, section_header_embed
+from app.services.dismissals import dismissed_keys, edition_key
 from app.services.email import EmailNotifier
 
 logger = logging.getLogger(__name__)
@@ -42,11 +43,14 @@ def upcoming_books_for_user(db: Session, user: User) -> list[Book]:
         .all()
     )
 
-    # Collapse multiple editions of the same title, same as the web UI and notifications.
+    # Collapse multiple editions of the same title, same as the web UI and notifications,
+    # and leave out titles the user has stopped monitoring.
+    dismissed = dismissed_keys(db)
     deduped: dict[tuple[int, str], Book] = {}
     for book in books:
-        key = (book.author_id, book.title.strip().lower())
-        deduped.setdefault(key, book)
+        key = edition_key(book)
+        if key not in dismissed:
+            deduped.setdefault(key, book)
     return list(deduped.values())
 
 

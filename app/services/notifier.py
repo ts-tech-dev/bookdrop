@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.models import AuthorSubscription, Book, NotificationLog, User
 from app.models.enums import NotificationChannel, NotificationFrequency, NotificationMode
 from app.services.discord import DiscordNotifier, book_embed
+from app.services.dismissals import is_dismissed
 from app.services.email import EmailNotifier
 from app.utils.time import utcnow
 
@@ -85,6 +86,10 @@ class Notifier:
                 book.title,
                 book.release_date,
             )
+            return
+
+        if is_dismissed(self._db, book):
+            logger.info("Skipping notification for book %d (%r): dismissed", book.id, book.title)
             return
 
         series_part = ""

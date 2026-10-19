@@ -8,6 +8,9 @@ announce or release new books and audiobooks.
 - Manually add authors to follow, or import your author list from an
   [Audiobookshelf](https://www.audiobookshelf.org/) instance.
 - Looks up new and upcoming titles via the Audible catalog and the Google Books API.
+- Not interested in a book? Hide it from the shelf to stop monitoring it: no more
+  notifications or digest entries for any edition of it. Hidden books can be restored from
+  the "Hidden" filter.
 - A "For you" tab with reading recommendations built from your Audiobookshelf library:
   the next unowned book in each series you're reading, plus titles Audible pairs with
   your most recently added books.
