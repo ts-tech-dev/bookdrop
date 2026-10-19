@@ -3,20 +3,18 @@ from fastapi.responses import HTMLResponse, Response
 
 router = APIRouter(tags=["ui"])
 
-# The header's brand mark, with a heavier stroke so it stays legible at 16px and its own
-# light/dark colors (a favicon can't inherit the page's CSS variables).
-_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"
-  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+# The header's brand mark (a drop with an open book cut out of it), with its own light/dark
+# colors since a favicon can't inherit the page's CSS variables. The book is a real hole
+# (evenodd), so the tab bar shows through it in either theme.
+_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 <style>
-  g { stroke: #3d5a80; }
-  @media (prefers-color-scheme: dark) { g { stroke: #93b4dd; } }
+  path { fill: #3d5a80; }
+  @media (prefers-color-scheme: dark) { path { fill: #93b4dd; } }
 </style>
-<g>
-  <path d="M3 14a13 13 0 0 1 26 0"/>
-  <path d="M3 14c2.3 0 3.6-2.2 4.4-5M29 14c-2.3 0-3.6-2.2-4.4-5M16 3v6M11 14l5 5 5-5"/>
-  <rect x="11.5" y="18.5" width="9" height="9.5" rx="1.5"/>
-  <path d="M16 19v9.5"/>
-</g>
+<path fill-rule="evenodd" d="
+  M16 1.5C16 1.5 4.5 13.6 4.5 20.5a11.5 11.5 0 0 0 23 0C27.5 13.6 16 1.5 16 1.5Z
+  M15 17.2c-2.3-1.5-5-2-7.6-1.8v9.2c2.6-.2 5.3.3 7.6 1.8Z
+  M17 17.2c2.3-1.5 5-2 7.6-1.8v9.2c-2.6-.2-5.3.3-7.6 1.8Z"/>
 </svg>
 """
 
@@ -639,12 +637,11 @@ _INDEX_HTML = """<!doctype html>
 <header>
   <div class="wrap">
     <div class="brand">
-      <svg class="brand-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor"
-        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 14a13 13 0 0 1 26 0"/>
-        <path d="M3 14c2.3 0 3.6-2.2 4.4-5M29 14c-2.3 0-3.6-2.2-4.4-5M16 3v6M11 14l5 5 5-5"/>
-        <rect x="11.5" y="18.5" width="9" height="9.5" rx="1.5"/>
-        <path d="M16 19v9.5"/>
+      <svg class="brand-icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="
+          M16 1.5C16 1.5 4.5 13.6 4.5 20.5a11.5 11.5 0 0 0 23 0C27.5 13.6 16 1.5 16 1.5Z
+          M15 17.2c-2.3-1.5-5-2-7.6-1.8v9.2c2.6-.2 5.3.3 7.6 1.8Z
+          M17 17.2c2.3-1.5 5-2 7.6-1.8v9.2c-2.6-.2-5.3.3-7.6 1.8Z"/>
       </svg>
       <h1 class="display">Bookdrop</h1>
     </div>
