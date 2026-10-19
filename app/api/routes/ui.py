@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, Response
 
@@ -17,6 +19,9 @@ _FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   M17 17.2c2.3-1.5 5-2 7.6-1.8v9.2c-2.6-.2-5.3.3-7.6 1.8Z"/>
 </svg>
 """
+# Browsers cache favicons hard (beyond max-age), so the link carries a content hash: any
+# change to the mark changes the URL and every tab picks it up on the next page load.
+_FAVICON_VERSION = hashlib.sha256(_FAVICON_SVG.encode()).hexdigest()[:10]
 
 _INDEX_HTML = """<!doctype html>
 <html lang="en">
@@ -24,7 +29,7 @@ _INDEX_HTML = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bookdrop</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=__FAVICON_VERSION__">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link
@@ -1492,7 +1497,7 @@ loadRecs().catch((err) => {
 
 @router.get("/", response_class=HTMLResponse)
 def index() -> str:
-    return _INDEX_HTML
+    return _INDEX_HTML.replace("__FAVICON_VERSION__", _FAVICON_VERSION)
 
 
 @router.get("/favicon.svg", include_in_schema=False)
