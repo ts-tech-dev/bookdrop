@@ -1258,21 +1258,27 @@ async function follow(name, btn) {
   }
 }
 
+// Goodreads has no ID we can derive from an Audible ASIN, so link to a title + author
+// search. Its iOS/Android apps claim goodreads.com links, so phones open the app.
+function goodreadsUrl(r) {
+  const q = [r.title, r.author_name].filter(Boolean).join(' ');
+  return 'https://www.goodreads.com/search?q=' + encodeURIComponent(q);
+}
+
 function recCard(r, i) {
   const card = document.createElement('article');
   card.className = 'rec';
   card.style.setProperty('--i', String(Math.min(i, 12)));
   card.style.setProperty('--spine', 'hsl(' + hueFor(r.author_name || r.title) + ' 58% 55%)');
 
-  const cover = document.createElement(r.url ? 'a' : 'div');
+  const link = goodreadsUrl(r);
+  const cover = document.createElement('a');
   cover.className = 'rec-cover';
-  if (r.url) {
-    cover.href = r.url;
-    cover.target = '_blank';
-    cover.rel = 'noopener';
-    cover.tabIndex = -1;
-    cover.setAttribute('aria-hidden', 'true');
-  }
+  cover.href = link;
+  cover.target = '_blank';
+  cover.rel = 'noopener';
+  cover.tabIndex = -1;
+  cover.setAttribute('aria-hidden', 'true');
   if (r.cover_url) {
     const img = document.createElement('img');
     img.src = r.cover_url;
@@ -1290,14 +1296,13 @@ function recCard(r, i) {
   const info = document.createElement('div');
   info.className = 'rec-info';
 
-  const title = document.createElement(r.url ? 'a' : 'div');
+  const title = document.createElement('a');
   title.className = 'rec-title';
   title.textContent = r.title;
-  if (r.url) {
-    title.href = r.url;
-    title.target = '_blank';
-    title.rel = 'noopener';
-  }
+  title.href = link;
+  title.target = '_blank';
+  title.rel = 'noopener';
+  title.title = 'Open on Goodreads';
   info.appendChild(title);
 
   if (r.author_name) {
